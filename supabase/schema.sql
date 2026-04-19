@@ -117,3 +117,49 @@ create trigger workers_updated_at
 create trigger leaves_updated_at
   before update on leaves
   for each row execute function update_updated_at();
+
+-- ── Inventory ─────────────────────────────────────────────────
+
+create table if not exists inventory_categories (
+  id uuid default gen_random_uuid() primary key,
+  user_id text not null,
+  name text not null,
+  icon text not null default '📦',
+  color text not null default 'bg-gray-100',
+  sort_order int default 0,
+  created_at timestamptz default now()
+);
+
+create table if not exists inventory_items (
+  id uuid default gen_random_uuid() primary key,
+  user_id text not null,
+  category_id uuid references inventory_categories(id) on delete set null,
+  name text not null,
+  unit text check (unit in ('pcs','pack','bottle','box','bag','kg','g','L','mL','roll')) default 'pcs',
+  quantity numeric not null default 0,
+  min_quantity numeric not null default 1,
+  location text check (location in ('kitchen','bathroom','bedroom','storage','other')) default 'kitchen',
+  expiry_date date,
+  brand text,
+  notes text,
+  created_at timestamptz default now(),
+  updated_at timestamptz default now()
+);
+
+alter table inventory_categories enable row level security;
+alter table inventory_items enable row level security;
+
+create policy "Users can manage their own inventory_categories"
+  on inventory_categories for all
+  using (user_id = current_setting('app.user_id', true));
+
+create policy "Users can manage their own inventory_items"
+  on inventory_items for all
+  using (user_id = current_setting('app.user_id', true));
+
+create trigger inventory_items_updated_at
+  before update on inventory_items
+  for each row execute function update_updated_at();
+
+-- Default categories (inserted per-user on first use via API)
+

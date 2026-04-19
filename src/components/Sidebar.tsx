@@ -3,13 +3,29 @@
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { signOut, useSession } from 'next-auth/react'
-import { CheckSquare, Calendar, Settings, LogOut, Sparkles, Users } from 'lucide-react'
+import { CheckSquare, Calendar, Settings, LogOut, Home, Users, Package } from 'lucide-react'
 
-const navItems = [
-  { href: '/tasks', icon: CheckSquare, label: '任務清單' },
-  { href: '/workers', icon: Users, label: '傭工管理' },
-  { href: '/calendar', icon: Calendar, label: '行事曆' },
-  { href: '/settings', icon: Settings, label: '設定' },
+const navGroups = [
+  {
+    label: '家居管理',
+    items: [
+      { href: '/inventory', icon: Package, label: '家居存貨' },
+      { href: '/tasks', icon: CheckSquare, label: '家務任務' },
+      { href: '/calendar', icon: Calendar, label: '行事曆' },
+    ],
+  },
+  {
+    label: '傭工管理',
+    items: [
+      { href: '/workers', icon: Users, label: '傭工資料' },
+    ],
+  },
+  {
+    label: '系統',
+    items: [
+      { href: '/settings', icon: Settings, label: '設定' },
+    ],
+  },
 ]
 
 export default function Sidebar() {
@@ -21,31 +37,40 @@ export default function Sidebar() {
       {/* Logo */}
       <div className="px-6 py-5 border-b border-gray-700">
         <div className="flex items-center gap-2">
-          <Sparkles className="w-6 h-6 text-indigo-400" />
-          <span className="text-lg font-bold">Smart Todo</span>
+          <Home className="w-6 h-6 text-indigo-400" />
+          <span className="text-lg font-bold">家居管家</span>
         </div>
-        <p className="text-xs text-gray-400 mt-1">智能任務管理</p>
+        <p className="text-xs text-gray-400 mt-1">僱主家居管理系統</p>
       </div>
 
       {/* Navigation */}
-      <nav className="flex-1 px-4 py-4 space-y-1">
-        {navItems.map(({ href, icon: Icon, label }) => {
-          const active = pathname.startsWith(href)
-          return (
-            <Link
-              key={href}
-              href={href}
-              className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
-                active
-                  ? 'bg-indigo-600 text-white'
-                  : 'text-gray-300 hover:bg-gray-800 hover:text-white'
-              }`}
-            >
-              <Icon className="w-5 h-5" />
-              {label}
-            </Link>
-          )
-        })}
+      <nav className="flex-1 px-4 py-4 space-y-5 overflow-y-auto">
+        {navGroups.map(group => (
+          <div key={group.label}>
+            <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider px-3 mb-1">
+              {group.label}
+            </p>
+            <div className="space-y-0.5">
+              {group.items.map(({ href, icon: Icon, label }) => {
+                const active = pathname.startsWith(href)
+                return (
+                  <Link
+                    key={href}
+                    href={href}
+                    className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
+                      active
+                        ? 'bg-indigo-600 text-white'
+                        : 'text-gray-300 hover:bg-gray-800 hover:text-white'
+                    }`}
+                  >
+                    <Icon className="w-5 h-5" />
+                    {label}
+                  </Link>
+                )
+              })}
+            </div>
+          </div>
+        ))}
       </nav>
 
       {/* User info + logout */}

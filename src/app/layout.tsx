@@ -9,8 +9,8 @@ const geistSans = Geist({
 });
 
 export const metadata: Metadata = {
-  title: "Smart Todo",
-  description: "智能任務管理 — 連接 Google Calendar，自動排程",
+  title: "家居管家",
+  description: "僱主家居管理系統 — 存貨、傭工、家務一站管理",
   manifest: "/manifest.json",
 };
 

@@ -52,6 +52,38 @@ export interface ScheduleConflict {
   suggestedEnd: string
 }
 
+// ── Inventory ────────────────────────────────────────────────
+export type InventoryLocation = 'kitchen' | 'bathroom' | 'bedroom' | 'storage' | 'other'
+export type InventoryUnit = 'pcs' | 'pack' | 'bottle' | 'box' | 'bag' | 'kg' | 'g' | 'L' | 'mL' | 'roll'
+
+export interface InventoryCategory {
+  id: string
+  user_id: string
+  name: string
+  icon: string     // emoji
+  color: string    // tailwind bg class e.g. "bg-orange-100"
+  sort_order: number
+  created_at: string
+}
+
+export interface InventoryItem {
+  id: string
+  user_id: string
+  category_id: string | null
+  name: string
+  unit: InventoryUnit
+  quantity: number
+  min_quantity: number      // low stock threshold
+  location: InventoryLocation
+  expiry_date: string | null
+  brand?: string
+  notes?: string
+  created_at: string
+  updated_at: string
+  category?: InventoryCategory
+}
+
+// ── Worker / Leave ───────────────────────────────────────────
 export type LeaveType = 'annual' | 'sick' | 'compensation' | 'unpaid' | 'other'
 export type LeaveStatus = 'pending' | 'approved' | 'rejected'
 

@@ -3,7 +3,7 @@
 import { useSession, signIn } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
 import { useEffect } from 'react'
-import { Sparkles, CheckSquare, Calendar, Zap } from 'lucide-react'
+import { HomeIcon, Package, Users, CheckSquare } from 'lucide-react'
 
 export default function Home() {
   const { data: session, status } = useSession()
@@ -26,19 +26,19 @@ export default function Home() {
       <div className="max-w-md w-full text-center">
         <div className="flex items-center justify-center gap-3 mb-8">
           <div className="w-14 h-14 bg-indigo-600 rounded-2xl flex items-center justify-center shadow-lg">
-            <Sparkles className="w-8 h-8 text-white" />
+            <HomeIcon className="w-8 h-8 text-white" />
           </div>
           <div className="text-left">
-            <h1 className="text-2xl font-bold text-gray-900">Smart Todo</h1>
-            <p className="text-sm text-gray-500">智能任務管理</p>
+            <h1 className="text-2xl font-bold text-gray-900">家居管家</h1>
+            <p className="text-sm text-gray-500">僱主家居管理系統</p>
           </div>
         </div>
 
         <div className="grid grid-cols-1 gap-3 mb-8">
           {[
-            { icon: CheckSquare, title: '智能任務清單', desc: '按重要性、日期自動排序，支援子任務' },
-            { icon: Calendar, title: 'Google Calendar 同步', desc: '雙向同步，行事曆即時更新' },
-            { icon: Zap, title: '自動排程', desc: '衝突時自動建議最佳時間，唔會重疊' },
+            { icon: Package, title: '家居存貨管理', desc: '追蹤日用品庫存，自動提醒需補貨及到期物品' },
+            { icon: Users, title: '傭工資料管理', desc: '合約、薪酬、假期記錄，一目了然' },
+            { icon: CheckSquare, title: '家務任務分派', desc: '分配家務，連接 Google Calendar 同步' },
           ].map(({ icon: Icon, title, desc }) => (
             <div key={title} className="flex items-start gap-3 p-3 bg-white rounded-xl shadow-sm border border-gray-100 text-left">
               <div className="w-8 h-8 bg-indigo-100 rounded-lg flex items-center justify-center shrink-0 mt-0.5">
