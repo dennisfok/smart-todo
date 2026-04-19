@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Geist } from "next/font/google";
 import "./globals.css";
 import AuthProvider from "@/components/AuthProvider";
@@ -12,6 +12,9 @@ export const metadata: Metadata = {
   title: "Smart Todo",
   description: "智能任務管理 — 連接 Google Calendar，自動排程",
   manifest: "/manifest.json",
+};
+
+export const viewport: Viewport = {
   themeColor: "#4f46e5",
 };
 

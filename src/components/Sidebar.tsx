@@ -3,10 +3,11 @@
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { signOut, useSession } from 'next-auth/react'
-import { CheckSquare, Calendar, Settings, LogOut, Sparkles } from 'lucide-react'
+import { CheckSquare, Calendar, Settings, LogOut, Sparkles, Users } from 'lucide-react'
 
 const navItems = [
   { href: '/tasks', icon: CheckSquare, label: '任務清單' },
+  { href: '/workers', icon: Users, label: '傭工管理' },
   { href: '/calendar', icon: Calendar, label: '行事曆' },
   { href: '/settings', icon: Settings, label: '設定' },
 ]

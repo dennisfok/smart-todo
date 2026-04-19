@@ -51,3 +51,41 @@ export interface ScheduleConflict {
   suggestedStart: string
   suggestedEnd: string
 }
+
+export type LeaveType = 'annual' | 'sick' | 'compensation' | 'unpaid' | 'other'
+export type LeaveStatus = 'pending' | 'approved' | 'rejected'
+
+export interface Worker {
+  id: string
+  user_id: string
+  name: string
+  nationality?: string
+  phone?: string
+  email?: string
+  start_date?: string | null
+  contract_end_date?: string | null
+  salary?: number | null
+  rest_day?: number | null  // 0=Sun,...,6=Sat
+  agency_name?: string
+  passport_no?: string
+  visa_expiry?: string | null
+  notes?: string
+  is_active: boolean
+  created_at: string
+  updated_at: string
+}
+
+export interface Leave {
+  id: string
+  worker_id: string
+  user_id: string
+  leave_type: LeaveType
+  start_date: string
+  end_date: string
+  days: number
+  status: LeaveStatus
+  notes?: string
+  created_at: string
+  updated_at: string
+  worker?: Worker
+}

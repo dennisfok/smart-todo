@@ -62,3 +62,58 @@ create trigger tasks_updated_at
 create trigger settings_updated_at
   before update on settings
   for each row execute function update_updated_at();
+
+-- Workers (domestic helpers) table
+create table if not exists workers (
+  id uuid default gen_random_uuid() primary key,
+  user_id text not null,
+  name text not null,
+  nationality text,
+  phone text,
+  email text,
+  start_date date,
+  contract_end_date date,
+  salary numeric,
+  rest_day int check (rest_day between 0 and 6),
+  agency_name text,
+  passport_no text,
+  visa_expiry date,
+  notes text,
+  is_active boolean default true,
+  created_at timestamptz default now(),
+  updated_at timestamptz default now()
+);
+
+-- Leaves table
+create table if not exists leaves (
+  id uuid default gen_random_uuid() primary key,
+  worker_id uuid references workers(id) on delete cascade not null,
+  user_id text not null,
+  leave_type text check (leave_type in ('annual', 'sick', 'compensation', 'unpaid', 'other')) default 'annual',
+  start_date date not null,
+  end_date date not null,
+  days int not null default 1,
+  status text check (status in ('pending', 'approved', 'rejected')) default 'pending',
+  notes text,
+  created_at timestamptz default now(),
+  updated_at timestamptz default now()
+);
+
+alter table workers enable row level security;
+alter table leaves enable row level security;
+
+create policy "Users can manage their own workers"
+  on workers for all
+  using (user_id = current_setting('app.user_id', true));
+
+create policy "Users can manage their own leaves"
+  on leaves for all
+  using (user_id = current_setting('app.user_id', true));
+
+create trigger workers_updated_at
+  before update on workers
+  for each row execute function update_updated_at();
+
+create trigger leaves_updated_at
+  before update on leaves
+  for each row execute function update_updated_at();
