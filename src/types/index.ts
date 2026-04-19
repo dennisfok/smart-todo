@@ -83,6 +83,36 @@ export interface InventoryItem {
   category?: InventoryCategory
 }
 
+// ── Shopping List ────────────────────────────────────────────
+export type ShoppingListStatus = 'active' | 'completed'
+
+export interface ShoppingList {
+  id: string
+  user_id: string
+  name: string
+  status: ShoppingListStatus
+  notes?: string
+  created_at: string
+  updated_at: string
+  items?: ShoppingItem[]
+}
+
+export interface ShoppingItem {
+  id: string
+  list_id: string
+  user_id: string
+  inventory_item_id: string | null  // linked inventory item (optional)
+  name: string
+  quantity: number
+  unit: InventoryUnit
+  is_bought: boolean
+  estimated_price?: number | null
+  notes?: string
+  created_at: string
+  updated_at: string
+  inventory_item?: InventoryItem
+}
+
 // ── Worker / Leave ───────────────────────────────────────────
 export type LeaveType = 'annual' | 'sick' | 'compensation' | 'unpaid' | 'other'
 export type LeaveStatus = 'pending' | 'approved' | 'rejected'

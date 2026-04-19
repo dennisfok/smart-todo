@@ -163,3 +163,49 @@ create trigger inventory_items_updated_at
 
 -- Default categories (inserted per-user on first use via API)
 
+-- ── Shopping Lists ────────────────────────────────────────────
+
+create table if not exists shopping_lists (
+  id uuid default gen_random_uuid() primary key,
+  user_id text not null,
+  name text not null,
+  status text check (status in ('active','completed')) default 'active',
+  notes text,
+  created_at timestamptz default now(),
+  updated_at timestamptz default now()
+);
+
+create table if not exists shopping_items (
+  id uuid default gen_random_uuid() primary key,
+  list_id uuid references shopping_lists(id) on delete cascade not null,
+  user_id text not null,
+  inventory_item_id uuid references inventory_items(id) on delete set null,
+  name text not null,
+  quantity numeric not null default 1,
+  unit text check (unit in ('pcs','pack','bottle','box','bag','kg','g','L','mL','roll')) default 'pcs',
+  is_bought boolean default false,
+  estimated_price numeric,
+  notes text,
+  created_at timestamptz default now(),
+  updated_at timestamptz default now()
+);
+
+alter table shopping_lists enable row level security;
+alter table shopping_items enable row level security;
+
+create policy "Users can manage their own shopping_lists"
+  on shopping_lists for all
+  using (user_id = current_setting('app.user_id', true));
+
+create policy "Users can manage their own shopping_items"
+  on shopping_items for all
+  using (user_id = current_setting('app.user_id', true));
+
+create trigger shopping_lists_updated_at
+  before update on shopping_lists
+  for each row execute function update_updated_at();
+
+create trigger shopping_items_updated_at
+  before update on shopping_items
+  for each row execute function update_updated_at();
+

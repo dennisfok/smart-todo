@@ -3,13 +3,14 @@
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { signOut, useSession } from 'next-auth/react'
-import { CheckSquare, Calendar, Settings, LogOut, Home, Users, Package } from 'lucide-react'
+import { CheckSquare, Calendar, Settings, LogOut, Home, Users, Package, ShoppingCart } from 'lucide-react'
 
 const navGroups = [
   {
     label: '家居管理',
     items: [
       { href: '/inventory', icon: Package, label: '家居存貨' },
+      { href: '/shopping', icon: ShoppingCart, label: '採購清單' },
       { href: '/tasks', icon: CheckSquare, label: '家務任務' },
       { href: '/calendar', icon: Calendar, label: '行事曆' },
     ],
