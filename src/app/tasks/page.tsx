@@ -3,12 +3,12 @@
 import { useEffect, useState, useCallback } from 'react'
 import { useSession } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
-import { Task, Settings, SortOption } from '@/types'
+import { Task, Settings, SortOption, Project } from '@/types'
 import { sortTasks, detectAndResolveConflicts } from '@/lib/scheduler'
 import Sidebar from '@/components/Sidebar'
 import TaskItem from '@/components/TaskItem'
 import TaskForm from '@/components/TaskForm'
-import { Plus, SortAsc, Filter, CheckSquare } from 'lucide-react'
+import { Plus, SortAsc, Filter, CheckSquare, Zap } from 'lucide-react'
 
 const DEFAULT_SETTINGS: Settings = {
   id: '',
@@ -26,6 +26,7 @@ export default function TasksPage() {
   const router = useRouter()
 
   const [tasks, setTasks] = useState<Task[]>([])
+  const [projects, setProjects] = useState<Project[]>([])
   const [settings, setSettings] = useState<Settings>(DEFAULT_SETTINGS)
   const [sortBy, setSortBy] = useState<SortOption>('importance')
   const [showCompleted, setShowCompleted] = useState(false)
@@ -36,6 +37,9 @@ export default function TasksPage() {
   const [pendingTaskData, setPendingTaskData] = useState<Partial<Task> | null>(null)
   const [loading, setLoading] = useState(true)
   const [filterImportance, setFilterImportance] = useState<string>('all')
+  const [filterProject, setFilterProject] = useState<string>('all')
+  const [scheduling, setScheduling] = useState(false)
+  const [scheduleResult, setScheduleResult] = useState<string | null>(null)
 
   useEffect(() => {
     if (status === 'unauthenticated') router.push('/')
@@ -43,11 +47,13 @@ export default function TasksPage() {
 
   const fetchTasks = useCallback(async () => {
     const res = await fetch('/api/tasks')
-    if (res.ok) {
-      const data = await res.json()
-      setTasks(data)
-    }
+    if (res.ok) setTasks(await res.json())
     setLoading(false)
+  }, [])
+
+  const fetchProjects = useCallback(async () => {
+    const res = await fetch('/api/projects')
+    if (res.ok) setProjects(await res.json())
   }, [])
 
   const fetchSettings = useCallback(async () => {
@@ -61,17 +67,15 @@ export default function TasksPage() {
   useEffect(() => {
     if (session) {
       fetchTasks()
+      fetchProjects()
       fetchSettings()
     }
-  }, [session, fetchTasks, fetchSettings])
+  }, [session, fetchTasks, fetchProjects, fetchSettings])
 
-  // Flatten all tasks (including subtasks) for conflict detection
-  const allFlatTasks = (tasks: Task[]): Task[] => {
-    return tasks.flatMap(t => [t, ...(t.subtasks ? allFlatTasks(t.subtasks) : [])])
-  }
+  const allFlatTasks = (tasks: Task[]): Task[] =>
+    tasks.flatMap(t => [t, ...(t.subtasks ? allFlatTasks(t.subtasks) : [])])
 
   const handleSave = async (data: Partial<Task>) => {
-    // Check for conflicts if has time
     if (data.start_time && data.end_time && !data.is_fixed) {
       const flatTasks = allFlatTasks(tasks).filter(t => t.id !== editingTask?.id)
       const conflict = detectAndResolveConflicts(data, flatTasks, settings)
@@ -110,7 +114,6 @@ export default function TasksPage() {
         setAddingSubtaskFor(null)
         fetchTasks()
 
-        // Auto-sync to Google Calendar if has time
         if (data.start_time) {
           const task = await res.json()
           await fetch('/api/calendar', {
@@ -128,7 +131,7 @@ export default function TasksPage() {
     await fetch(`/api/tasks/${id}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ is_completed: completed }),
+      body: JSON.stringify({ is_completed: completed, status: completed ? 'completed' : 'not_started' }),
     })
     fetchTasks()
   }
@@ -146,6 +149,18 @@ export default function TasksPage() {
       body: JSON.stringify({ taskId }),
     })
     fetchTasks()
+  }
+
+  const handleAutoSchedule = async () => {
+    setScheduling(true)
+    setScheduleResult(null)
+    const res = await fetch('/api/auto-schedule', { method: 'POST' })
+    if (res.ok) {
+      const data = await res.json()
+      setScheduleResult(`已自動排程 ${data.scheduled} 個任務`)
+      fetchTasks()
+    }
+    setScheduling(false)
   }
 
   const openEdit = (task: Task) => {
@@ -181,6 +196,7 @@ export default function TasksPage() {
   const filteredTasks = tasks
     .filter(t => showCompleted ? true : !t.is_completed)
     .filter(t => filterImportance === 'all' ? true : t.importance === filterImportance)
+    .filter(t => filterProject === 'all' ? true : t.project_id === filterProject)
 
   const sortedTasks = sortTasks(filteredTasks, sortBy)
 
@@ -209,14 +225,31 @@ export default function TasksPage() {
                 {completedCount}/{totalCount} 已完成
               </p>
             </div>
-            <button
-              onClick={openNew}
-              className="flex items-center gap-2 bg-indigo-600 text-white px-4 py-2 rounded-xl text-sm font-medium hover:bg-indigo-700 transition-colors shadow-sm"
-            >
-              <Plus className="w-4 h-4" />
-              新增任務
-            </button>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={handleAutoSchedule}
+                disabled={scheduling}
+                className="flex items-center gap-2 bg-white border border-gray-200 text-gray-700 px-3 py-2 rounded-xl text-sm font-medium hover:bg-gray-50 transition-colors disabled:opacity-60"
+              >
+                <Zap className={`w-4 h-4 text-indigo-500 ${scheduling ? 'animate-pulse' : ''}`} />
+                {scheduling ? '排程中...' : 'AI 排程'}
+              </button>
+              <button
+                onClick={openNew}
+                className="flex items-center gap-2 bg-indigo-600 text-white px-4 py-2 rounded-xl text-sm font-medium hover:bg-indigo-700 transition-colors shadow-sm"
+              >
+                <Plus className="w-4 h-4" />
+                新增任務
+              </button>
+            </div>
           </div>
+
+          {scheduleResult && (
+            <div className="mb-4 p-3 bg-indigo-50 border border-indigo-200 rounded-xl text-sm text-indigo-700 flex items-center gap-2">
+              <Zap className="w-4 h-4" />
+              {scheduleResult}
+            </div>
+          )}
 
           {/* Filters */}
           <div className="flex items-center gap-3 mb-5 flex-wrap">
@@ -228,8 +261,9 @@ export default function TasksPage() {
                 onChange={e => setSortBy(e.target.value as SortOption)}
                 className="text-sm text-gray-700 bg-transparent outline-none"
               >
-                <option value="importance">按重要性</option>
-                <option value="date">按日期</option>
+                <option value="importance">按優先級</option>
+                <option value="deadline">按截止日期</option>
+                <option value="date">按排程時間</option>
                 <option value="created">按建立時間</option>
               </select>
             </div>
@@ -242,12 +276,30 @@ export default function TasksPage() {
                 onChange={e => setFilterImportance(e.target.value)}
                 className="text-sm text-gray-700 bg-transparent outline-none"
               >
-                <option value="all">全部</option>
-                <option value="high">高重要</option>
-                <option value="medium">中重要</option>
-                <option value="low">低重要</option>
+                <option value="all">全部優先級</option>
+                <option value="asap">緊急</option>
+                <option value="high">高</option>
+                <option value="medium">中</option>
+                <option value="low">低</option>
               </select>
             </div>
+
+            {/* Project filter */}
+            {projects.length > 0 && (
+              <div className="flex items-center gap-1.5 bg-white border border-gray-200 rounded-lg px-3 py-1.5 text-sm">
+                <select
+                  value={filterProject}
+                  onChange={e => setFilterProject(e.target.value)}
+                  className="text-sm text-gray-700 bg-transparent outline-none"
+                >
+                  <option value="all">全部項目</option>
+                  <option value="">無項目</option>
+                  {projects.map(p => (
+                    <option key={p.id} value={p.id}>{p.name}</option>
+                  ))}
+                </select>
+              </div>
+            )}
 
             {/* Show completed toggle */}
             <button
@@ -303,6 +355,7 @@ export default function TasksPage() {
         <TaskForm
           task={editingTask}
           parentId={addingSubtaskFor}
+          projects={projects}
           onSave={handleSave}
           onClose={closeForm}
           conflictWarning={conflictWarning}

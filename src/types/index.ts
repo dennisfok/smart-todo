@@ -1,4 +1,15 @@
-export type Importance = 'high' | 'medium' | 'low'
+export type Importance = 'asap' | 'high' | 'medium' | 'low'
+export type TaskStatus = 'not_started' | 'in_progress' | 'completed'
+
+export interface Project {
+  id: string
+  user_id: string
+  name: string
+  color: string
+  description?: string
+  created_at: string
+  updated_at: string
+}
 
 export interface Task {
   id: string
@@ -6,15 +17,20 @@ export interface Task {
   title: string
   description?: string
   importance: Importance
+  status: TaskStatus
+  duration_minutes: number
   start_time?: string | null
   end_time?: string | null
+  deadline?: string | null
   is_fixed: boolean
   is_completed: boolean
+  project_id?: string | null
   parent_id?: string | null
   google_event_id?: string | null
   created_at: string
   updated_at: string
   subtasks?: Task[]
+  project?: Project
 }
 
 export interface Settings {
@@ -44,7 +60,7 @@ export interface CalendarEvent {
   }
 }
 
-export type SortOption = 'importance' | 'date' | 'created'
+export type SortOption = 'importance' | 'date' | 'created' | 'deadline'
 
 export interface ScheduleConflict {
   conflictingTask: Task

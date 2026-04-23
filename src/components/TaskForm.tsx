@@ -1,13 +1,14 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { Task, Importance } from '@/types'
-import { X, AlertTriangle } from 'lucide-react'
+import { Task, Importance, TaskStatus, Project } from '@/types'
+import { X, AlertTriangle, Clock } from 'lucide-react'
 import { format } from 'date-fns'
 
 interface Props {
   task?: Task | null
   parentId?: string | null
+  projects?: Project[]
   onSave: (data: Partial<Task>) => void
   onClose: () => void
   conflictWarning?: {
@@ -18,17 +19,54 @@ interface Props {
   onAcceptSuggestion?: (start: string, end: string) => void
 }
 
-export default function TaskForm({ task, parentId, onSave, onClose, conflictWarning, onAcceptSuggestion }: Props) {
+const IMPORTANCE_CONFIG: Record<Importance, { label: string; color: string }> = {
+  asap: { label: '緊急', color: 'bg-red-100 text-red-700 border-red-300 hover:bg-red-200' },
+  high: { label: '高', color: 'bg-orange-100 text-orange-700 border-orange-300 hover:bg-orange-200' },
+  medium: { label: '中', color: 'bg-yellow-100 text-yellow-700 border-yellow-300 hover:bg-yellow-200' },
+  low: { label: '低', color: 'bg-green-100 text-green-700 border-green-300 hover:bg-green-200' },
+}
+
+const STATUS_CONFIG: Record<TaskStatus, { label: string }> = {
+  not_started: { label: '未開始' },
+  in_progress: { label: '進行中' },
+  completed: { label: '已完成' },
+}
+
+const DURATION_PRESETS = [
+  { label: '15分', value: 15 },
+  { label: '30分', value: 30 },
+  { label: '1小時', value: 60 },
+  { label: '2小時', value: 120 },
+  { label: '半天', value: 240 },
+  { label: '全天', value: 480 },
+]
+
+export default function TaskForm({ task, parentId, projects = [], onSave, onClose, conflictWarning, onAcceptSuggestion }: Props) {
   const [title, setTitle] = useState(task?.title || '')
   const [description, setDescription] = useState(task?.description || '')
   const [importance, setImportance] = useState<Importance>(task?.importance || 'medium')
+  const [status, setStatus] = useState<TaskStatus>(task?.status || 'not_started')
+  const [durationMinutes, setDurationMinutes] = useState(task?.duration_minutes || 60)
   const [startTime, setStartTime] = useState(
     task?.start_time ? format(new Date(task.start_time), "yyyy-MM-dd'T'HH:mm") : ''
   )
   const [endTime, setEndTime] = useState(
     task?.end_time ? format(new Date(task.end_time), "yyyy-MM-dd'T'HH:mm") : ''
   )
+  const [deadline, setDeadline] = useState(
+    task?.deadline ? format(new Date(task.deadline), "yyyy-MM-dd'T'HH:mm") : ''
+  )
   const [isFixed, setIsFixed] = useState(task?.is_fixed || false)
+  const [projectId, setProjectId] = useState(task?.project_id || '')
+
+  // Auto-compute end time from start + duration
+  useEffect(() => {
+    if (startTime && durationMinutes && !task?.end_time) {
+      const start = new Date(startTime)
+      const end = new Date(start.getTime() + durationMinutes * 60000)
+      setEndTime(format(end, "yyyy-MM-dd'T'HH:mm"))
+    }
+  }, [startTime, durationMinutes])
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
@@ -38,24 +76,22 @@ export default function TaskForm({ task, parentId, onSave, onClose, conflictWarn
       title: title.trim(),
       description: description.trim() || undefined,
       importance,
+      status,
+      duration_minutes: durationMinutes,
       start_time: startTime ? new Date(startTime).toISOString() : null,
       end_time: endTime ? new Date(endTime).toISOString() : null,
+      deadline: deadline ? new Date(deadline).toISOString() : null,
       is_fixed: isFixed,
+      project_id: projectId || null,
       parent_id: parentId || task?.parent_id || null,
     })
   }
 
-  const importanceConfig = {
-    high: { label: '高', color: 'bg-red-100 text-red-700 border-red-300 hover:bg-red-200' },
-    medium: { label: '中', color: 'bg-yellow-100 text-yellow-700 border-yellow-300 hover:bg-yellow-200' },
-    low: { label: '低', color: 'bg-green-100 text-green-700 border-green-300 hover:bg-green-200' },
-  }
-
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md">
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b">
+        <div className="flex items-center justify-between px-6 py-4 border-b sticky top-0 bg-white">
           <h2 className="text-lg font-semibold text-gray-900">
             {task ? '編輯任務' : parentId ? '新增子任務' : '新增任務'}
           </h2>
@@ -117,23 +153,101 @@ export default function TaskForm({ task, parentId, onSave, onClose, conflictWarn
             />
           </div>
 
-          {/* Importance */}
+          {/* Priority + Status row */}
+          <div className="grid grid-cols-2 gap-3">
+            {/* Importance */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">優先級</label>
+              <div className="grid grid-cols-2 gap-1">
+                {(Object.entries(IMPORTANCE_CONFIG) as [Importance, typeof IMPORTANCE_CONFIG.high][]).map(([key, cfg]) => (
+                  <button
+                    key={key}
+                    type="button"
+                    onClick={() => setImportance(key)}
+                    className={`py-1.5 text-xs border rounded-lg transition-colors ${
+                      importance === key ? cfg.color + ' font-semibold' : 'border-gray-200 text-gray-500 hover:bg-gray-50'
+                    }`}
+                  >
+                    {cfg.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Status */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">狀態</label>
+              <select
+                value={status}
+                onChange={e => setStatus(e.target.value as TaskStatus)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              >
+                {(Object.entries(STATUS_CONFIG) as [TaskStatus, { label: string }][]).map(([key, cfg]) => (
+                  <option key={key} value={key}>{cfg.label}</option>
+                ))}
+              </select>
+            </div>
+          </div>
+
+          {/* Duration */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">重要性</label>
-            <div className="flex gap-2">
-              {(Object.entries(importanceConfig) as [Importance, typeof importanceConfig.high][]).map(([key, cfg]) => (
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              <Clock className="w-4 h-4 inline mr-1" />
+              預計時長
+            </label>
+            <div className="flex gap-2 flex-wrap">
+              {DURATION_PRESETS.map(preset => (
                 <button
-                  key={key}
+                  key={preset.value}
                   type="button"
-                  onClick={() => setImportance(key)}
-                  className={`flex-1 py-1.5 text-sm border rounded-lg transition-colors ${
-                    importance === key ? cfg.color + ' font-semibold' : 'border-gray-200 text-gray-500 hover:bg-gray-50'
+                  onClick={() => setDurationMinutes(preset.value)}
+                  className={`px-3 py-1 text-xs rounded-lg border transition-colors ${
+                    durationMinutes === preset.value
+                      ? 'bg-indigo-600 text-white border-indigo-600'
+                      : 'border-gray-200 text-gray-600 hover:bg-gray-50'
                   }`}
                 >
-                  {cfg.label}
+                  {preset.label}
                 </button>
               ))}
+              <input
+                type="number"
+                min="5"
+                max="480"
+                value={durationMinutes}
+                onChange={e => setDurationMinutes(Number(e.target.value))}
+                className="w-20 px-2 py-1 border border-gray-300 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                placeholder="分鐘"
+              />
             </div>
+          </div>
+
+          {/* Project */}
+          {projects.length > 0 && (
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">所屬項目</label>
+              <select
+                value={projectId}
+                onChange={e => setProjectId(e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              >
+                <option value="">無項目</option>
+                {projects.map(p => (
+                  <option key={p.id} value={p.id}>{p.name}</option>
+                ))}
+              </select>
+            </div>
+          )}
+
+          {/* Deadline */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">截止日期（選填）</label>
+            <input
+              type="datetime-local"
+              value={deadline}
+              onChange={e => setDeadline(e.target.value)}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            />
           </div>
 
           {/* Time */}

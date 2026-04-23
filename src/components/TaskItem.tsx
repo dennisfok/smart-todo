@@ -4,9 +4,9 @@ import { useState } from 'react'
 import { Task } from '@/types'
 import {
   CheckCircle2, Circle, ChevronDown, ChevronRight,
-  Clock, Pin, PinOff, Pencil, Trash2, Plus, CalendarDays
+  Clock, Pin, Pencil, Trash2, Plus, CalendarDays, AlertCircle
 } from 'lucide-react'
-import { format } from 'date-fns'
+import { format, isPast, isToday } from 'date-fns'
 
 interface Props {
   task: Task
@@ -18,16 +18,39 @@ interface Props {
   depth?: number
 }
 
-const importanceDot = {
-  high: 'bg-red-500',
+const importanceDot: Record<string, string> = {
+  asap: 'bg-red-600',
+  high: 'bg-orange-500',
   medium: 'bg-yellow-400',
   low: 'bg-green-400',
 }
 
-const importanceLabel = {
+const importanceLabel: Record<string, string> = {
+  asap: '緊急',
   high: '高',
   medium: '中',
   low: '低',
+}
+
+const statusBadge: Record<string, { label: string; cls: string }> = {
+  not_started: { label: '未開始', cls: 'bg-gray-100 text-gray-500' },
+  in_progress: { label: '進行中', cls: 'bg-blue-100 text-blue-600' },
+  completed: { label: '已完成', cls: 'bg-green-100 text-green-600' },
+}
+
+function DeadlineBadge({ deadline }: { deadline: string }) {
+  const date = new Date(deadline)
+  const overdue = isPast(date) && !isToday(date)
+  const dueToday = isToday(date)
+  return (
+    <span className={`text-xs px-1.5 py-0.5 rounded-md flex items-center gap-0.5 ${
+      overdue ? 'bg-red-100 text-red-600' : dueToday ? 'bg-orange-100 text-orange-600' : 'bg-gray-100 text-gray-500'
+    }`}>
+      <AlertCircle className="w-3 h-3" />
+      {overdue ? '已逾期 ' : dueToday ? '今天截止 ' : '截止 '}
+      {format(date, 'MM/dd')}
+    </span>
+  )
 }
 
 export default function TaskItem({
@@ -35,6 +58,7 @@ export default function TaskItem({
 }: Props) {
   const [expanded, setExpanded] = useState(true)
   const hasSubtasks = task.subtasks && task.subtasks.length > 0
+  const sb = statusBadge[task.status || 'not_started']
 
   return (
     <div className={`${depth > 0 ? 'ml-6 border-l-2 border-gray-100 pl-4' : ''}`}>
@@ -68,12 +92,27 @@ export default function TaskItem({
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 flex-wrap">
             {/* Importance dot */}
-            <span className={`w-2 h-2 rounded-full shrink-0 ${importanceDot[task.importance]}`} title={`重要性：${importanceLabel[task.importance]}`} />
+            <span className={`w-2 h-2 rounded-full shrink-0 ${importanceDot[task.importance]}`} title={`優先級：${importanceLabel[task.importance]}`} />
 
             {/* Title */}
             <span className={`text-sm font-medium text-gray-800 ${task.is_completed ? 'line-through' : ''}`}>
               {task.title}
             </span>
+
+            {/* Project badge */}
+            {task.project && (
+              <span
+                className="text-xs px-1.5 py-0.5 rounded-md font-medium"
+                style={{ backgroundColor: task.project.color + '22', color: task.project.color }}
+              >
+                {task.project.name}
+              </span>
+            )}
+
+            {/* Status badge */}
+            {!task.is_completed && task.status !== 'not_started' && (
+              <span className={`text-xs px-1.5 py-0.5 rounded-md ${sb.cls}`}>{sb.label}</span>
+            )}
 
             {/* Fixed badge */}
             {task.is_fixed && (
@@ -84,9 +123,7 @@ export default function TaskItem({
 
             {/* Google Calendar badge */}
             {task.google_event_id && (
-              <span className="text-xs bg-green-100 text-green-600 px-1.5 py-0.5 rounded-md">
-                已同步
-              </span>
+              <span className="text-xs bg-green-100 text-green-600 px-1.5 py-0.5 rounded-md">已同步</span>
             )}
           </div>
 
@@ -95,23 +132,42 @@ export default function TaskItem({
             <p className="text-xs text-gray-400 mt-0.5 line-clamp-1">{task.description}</p>
           )}
 
-          {/* Time */}
-          {task.start_time && (
-            <div className="flex items-center gap-1 mt-1 text-xs text-gray-400">
-              <Clock className="w-3 h-3" />
-              <span>
-                {format(new Date(task.start_time), 'MM/dd HH:mm')}
-                {task.end_time && ` → ${format(new Date(task.end_time), 'HH:mm')}`}
-              </span>
-            </div>
-          )}
+          {/* Meta row */}
+          <div className="flex items-center gap-3 mt-1 flex-wrap">
+            {/* Scheduled time */}
+            {task.start_time && (
+              <div className="flex items-center gap-1 text-xs text-gray-400">
+                <Clock className="w-3 h-3" />
+                <span>
+                  {format(new Date(task.start_time), 'MM/dd HH:mm')}
+                  {task.end_time && ` → ${format(new Date(task.end_time), 'HH:mm')}`}
+                </span>
+              </div>
+            )}
 
-          {/* Subtask count */}
-          {hasSubtasks && (
-            <p className="text-xs text-gray-400 mt-0.5">
-              {task.subtasks!.filter(t => t.is_completed).length}/{task.subtasks!.length} 子任務完成
-            </p>
-          )}
+            {/* Duration */}
+            {!task.start_time && task.duration_minutes && (
+              <div className="flex items-center gap-1 text-xs text-gray-400">
+                <Clock className="w-3 h-3" />
+                <span>{task.duration_minutes >= 60
+                  ? `${Math.floor(task.duration_minutes / 60)}h${task.duration_minutes % 60 ? ` ${task.duration_minutes % 60}m` : ''}`
+                  : `${task.duration_minutes}m`
+                }</span>
+              </div>
+            )}
+
+            {/* Deadline */}
+            {task.deadline && !task.is_completed && (
+              <DeadlineBadge deadline={task.deadline} />
+            )}
+
+            {/* Subtask count */}
+            {hasSubtasks && (
+              <span className="text-xs text-gray-400">
+                {task.subtasks!.filter(t => t.is_completed).length}/{task.subtasks!.length} 子任務
+              </span>
+            )}
+          </div>
         </div>
 
         {/* Actions */}

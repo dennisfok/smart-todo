@@ -3,10 +3,12 @@
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { signOut, useSession } from 'next-auth/react'
-import { CheckSquare, Calendar, Settings, LogOut, Sparkles } from 'lucide-react'
+import { CheckSquare, Calendar, Settings, LogOut, Sparkles, Sun, FolderOpen } from 'lucide-react'
 
 const navItems = [
+  { href: '/today', icon: Sun, label: '今日排程' },
   { href: '/tasks', icon: CheckSquare, label: '任務清單' },
+  { href: '/projects', icon: FolderOpen, label: '項目' },
   { href: '/calendar', icon: Calendar, label: '行事曆' },
   { href: '/settings', icon: Settings, label: '設定' },
 ]
@@ -29,7 +31,7 @@ export default function Sidebar() {
       {/* Navigation */}
       <nav className="flex-1 px-4 py-4 space-y-1">
         {navItems.map(({ href, icon: Icon, label }) => {
-          const active = pathname.startsWith(href)
+          const active = pathname === href || (href !== '/today' && pathname.startsWith(href))
           return (
             <Link
               key={href}

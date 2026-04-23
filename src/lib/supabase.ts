@@ -1,5 +1,5 @@
 import { createClient, SupabaseClient } from '@supabase/supabase-js'
-import { Task, Settings } from '@/types'
+import { Task, Settings, Project } from '@/types'
 
 let _supabase: SupabaseClient | null = null
 
@@ -35,7 +35,7 @@ export function getSupabaseWithUser(userId: string) {
 export async function getTasks(userId: string): Promise<Task[]> {
   const { data, error } = await supabase
     .from('tasks')
-    .select('*')
+    .select('*, project:projects(id, name, color)')
     .eq('user_id', userId)
     .order('created_at', { ascending: false })
 
@@ -45,8 +45,8 @@ export async function getTasks(userId: string): Promise<Task[]> {
   const taskMap = new Map<string, Task>()
   const roots: Task[] = []
 
-  data.forEach(t => taskMap.set(t.id, { ...t, subtasks: [] }))
-  data.forEach(t => {
+  data.forEach((t: any) => taskMap.set(t.id, { ...t, subtasks: [] }))
+  data.forEach((t: any) => {
     if (t.parent_id && taskMap.has(t.parent_id)) {
       taskMap.get(t.parent_id)!.subtasks!.push(taskMap.get(t.id)!)
     } else if (!t.parent_id) {
@@ -83,6 +83,50 @@ export async function updateTask(id: string, updates: Partial<Task>): Promise<Ta
 export async function deleteTask(id: string): Promise<void> {
   const { error } = await supabase
     .from('tasks')
+    .delete()
+    .eq('id', id)
+
+  if (error) throw error
+}
+
+// Projects
+export async function getProjects(userId: string): Promise<Project[]> {
+  const { data, error } = await supabase
+    .from('projects')
+    .select('*')
+    .eq('user_id', userId)
+    .order('created_at', { ascending: true })
+
+  if (error) throw error
+  return data
+}
+
+export async function createProject(project: Omit<Project, 'id' | 'created_at' | 'updated_at'>): Promise<Project> {
+  const { data, error } = await supabase
+    .from('projects')
+    .insert(project)
+    .select()
+    .single()
+
+  if (error) throw error
+  return data
+}
+
+export async function updateProject(id: string, updates: Partial<Project>): Promise<Project> {
+  const { data, error } = await supabase
+    .from('projects')
+    .update(updates)
+    .eq('id', id)
+    .select()
+    .single()
+
+  if (error) throw error
+  return data
+}
+
+export async function deleteProject(id: string): Promise<void> {
+  const { error } = await supabase
+    .from('projects')
     .delete()
     .eq('id', id)
 
