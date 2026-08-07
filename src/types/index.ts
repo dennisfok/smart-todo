@@ -10,6 +10,7 @@ export interface Task {
   end_time?: string | null
   is_fixed: boolean
   is_completed: boolean
+  completed_at?: string | null
   parent_id?: string | null
   google_event_id?: string | null
   created_at: string

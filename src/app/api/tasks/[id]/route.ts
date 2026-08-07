@@ -12,6 +12,12 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   }
 
   const body = await req.json()
+  // Auto-stamp completed_at when marking complete, clear it when uncompleting
+  if (body.is_completed === true && !body.completed_at) {
+    body.completed_at = new Date().toISOString()
+  } else if (body.is_completed === false) {
+    body.completed_at = null
+  }
   const { data, error } = await supabase
     .from('tasks')
     .update(body)

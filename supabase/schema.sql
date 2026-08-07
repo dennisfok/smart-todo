@@ -15,11 +15,15 @@ create table if not exists tasks (
   end_time timestamptz,
   is_fixed boolean default false,
   is_completed boolean default false,
+  completed_at timestamptz,
   parent_id uuid references tasks(id) on delete cascade,
   google_event_id text,
   created_at timestamptz default now(),
   updated_at timestamptz default now()
 );
+
+-- Migration: add completed_at to existing tables (run if table already exists)
+-- alter table tasks add column if not exists completed_at timestamptz;
 
 -- Settings table
 create table if not exists settings (
